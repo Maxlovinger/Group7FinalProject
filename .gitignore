@@ -1,0 +1,9 @@
+.DS_Store
+**/.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Large local data (add Git LFS or host elsewhere if you need them in-repo)
+ACLED Data/*.xlsx
+acled_preprocessing/output/
