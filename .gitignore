@@ -7,3 +7,9 @@ __pycache__/
 # Large local data (add Git LFS or host elsewhere if you need them in-repo)
 ACLED Data/*.xlsx
 acled_preprocessing/output/
+
+node_modules/
+server/config.json
+client/src/config.json
+.env
+*.log
