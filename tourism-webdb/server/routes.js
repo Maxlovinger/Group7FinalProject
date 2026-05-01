@@ -26,11 +26,34 @@ const query = async (sql, params = []) => {
 // final report (caching is one of the optimization techniques the rubric asks
 // you to discuss).
 const _cache = new Map();
+
+const timedQuery = async (label, fn) => {
+  const start = process.hrtime.bigint();
+  const result = await fn();
+  const end = process.hrtime.bigint();
+
+  const ms = Number(end - start) / 1e6;
+  console.log(`⏱ ${label}: ${ms.toFixed(2)} ms`);
+
+  return result;
+};
+
 const cached = async (key, ttlMs, loader) => {
   const hit = _cache.get(key);
-  if (hit && hit.expires > Date.now()) return hit.value;
+
+  if (hit && hit.expires > Date.now()) {
+    console.log(`⚡ Cache HIT: ${key}`);
+    return hit.value;
+  }
+
+  console.log(`🔥 Cache MISS: ${key}`);
   const value = await loader();
-  _cache.set(key, { value, expires: Date.now() + ttlMs });
+
+  _cache.set(key, {
+    value,
+    expires: Date.now() + ttlMs,
+  });
+
   return value;
 };
 
@@ -405,11 +428,15 @@ const riskRewardScore = async (req, res) => {
   `;
 
   try {
-    const rows = await cached(cacheKey, 60_000, () => query(sql, params));
-    res.json(rows);
+    const rows = await timedQuery(
+      `risk_reward_score year=${year}, country=${country}, limit=${limit}`,
+      () => cached(cacheKey, 60_000, () => query(sql, params))
+    );
+
+        res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+      console.error(err);
+      res.status(500).json({ error: err.message });
   }
 };
 
@@ -479,7 +506,11 @@ const recoveryTimeline = async (req, res) => {
   `;
 
   try {
-    const rows = await cached(cacheKey, 60_000, () => query(sql, params));
+    const rows = await timedQuery(
+      `recovery_timeline country=${country}`,
+      () => cached(cacheKey, 60_000, () => query(sql, params))
+    );
+
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -540,7 +571,11 @@ const travelCorridors = async (req, res) => {
   `;
 
   try {
-    const rows = await cached(cacheKey, 60_000, () => query(sql, [limit]));
+    const rows = await timedQuery(
+      `travel_corridors limit=${limit}`,
+      () => cached(cacheKey, 60_000, () => query(sql, [limit]))
+    );
+
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -703,7 +738,11 @@ const highTrafficConflict = async (req, res) => {
   `;
 
   try {
-    const rows = await cached(cacheKey, 60_000, () => query(sql, [minArrivals]));
+    const rows = await timedQuery(
+      `high_traffic_conflict min_arrivals=${minArrivals}`,
+      () => cached(cacheKey, 60_000, () => query(sql, [minArrivals]))
+    );
+
     res.json(rows);
   } catch (err) {
     console.error(err);

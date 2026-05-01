@@ -53,7 +53,7 @@ const DarkTooltip = ({ active, payload, label }) => {
       }}
     >
       <Typography sx={{ color: '#00d4aa', fontWeight: 700, fontSize: '0.8rem', mb: 0.5 }}>
-        {p.country || p.city || p.name || label}
+        {p.country || p.country_name || p.city || p.name || label}
       </Typography>
 
       {p.year !== undefined && <div>Year: {p.year}</div>}
@@ -66,12 +66,20 @@ const DarkTooltip = ({ active, payload, label }) => {
         <div>GDP per Capita: ${Number(p.gdp_per_capita).toLocaleString()}</div>
       )}
 
+      {p.total_arrivals !== undefined && (
+        <div>Arrivals: {Number(p.total_arrivals).toLocaleString()}</div>
+      )}
+
       {p.total_fatalities !== undefined && (
         <div>Fatalities: {Number(p.total_fatalities).toLocaleString()}</div>
       )}
 
       {p.total_events !== undefined && (
         <div>Events: {Number(p.total_events).toLocaleString()}</div>
+      )}
+
+      {p.net_reward_score !== undefined && (
+        <div>Net Reward Score: {Number(p.net_reward_score).toFixed(4)}</div>
       )}
     </Box>
   );
@@ -81,23 +89,23 @@ export default function RiskRewardPage() {
   const [year, setYear] = useState(2022);
   const [country, setCountry] = useState('');
   const [limit, setLimit] = useState(20);
+
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [highTraffic, setHighTraffic] = useState([]);
+  const [highGdpConflict, setHighGdpConflict] = useState([]);
+
+  const [loadingMain, setLoadingMain] = useState(false);
+  const [loadingExtra, setLoadingExtra] = useState(false);
 
   useEffect(() => {
     const fetchRiskRewardData = async () => {
       try {
-        setLoading(true);
+        setLoadingMain(true);
 
         const params = new URLSearchParams();
 
-        if (year) {
-          params.set('year', year);
-        }
-
-        if (country.trim()) {
-          params.set('country', normalizeCountry(country));
-        }
+        if (year) params.set('year', year);
+        if (country.trim()) params.set('country', normalizeCountry(country));
 
         params.set('limit', limit);
 
@@ -120,12 +128,76 @@ export default function RiskRewardPage() {
         console.error('Failed to fetch risk reward data:', err);
         setData([]);
       } finally {
-        setLoading(false);
+        setLoadingMain(false);
       }
     };
 
     fetchRiskRewardData();
   }, [year, country, limit]);
+
+  useEffect(() => {
+    const fetchExtraRiskQueries = async () => {
+      try {
+        setLoadingExtra(true);
+
+        const highTrafficUrl = `${SERVER}/high_traffic_conflict?min_arrivals=100`;
+
+        const highGdpParams = new URLSearchParams();
+        if (year) highGdpParams.set('year', year);
+        if (country.trim()) highGdpParams.set('country', normalizeCountry(country));
+
+        const highGdpUrl = `${SERVER}/high_gdp_high_conflict?${highGdpParams.toString()}`;
+
+        const [trafficRows, highGdpRows] = await Promise.all([
+          fetch(highTrafficUrl)
+            .then(r => r.json())
+            .catch(err => {
+              console.error('high_traffic_conflict failed:', err);
+              return [];
+            }),
+
+          fetch(highGdpUrl)
+            .then(r => r.json())
+            .catch(err => {
+              console.error('high_gdp_high_conflict failed:', err);
+              return [];
+            }),
+        ]);
+
+        const cleanedTraffic = Array.isArray(trafficRows)
+          ? trafficRows.map(row => ({
+              ...row,
+              total_arrivals: Number(row.total_arrivals),
+              total_fatalities: Number(row.total_fatalities),
+              total_events: Number(row.total_events),
+              flight_score: Number(row.flight_score),
+              conflict_score: Number(row.conflict_score),
+              net_reward_score: Number(row.net_reward_score),
+            }))
+          : [];
+
+        const cleanedHighGdp = Array.isArray(highGdpRows)
+          ? highGdpRows.map(row => ({
+              ...row,
+              gdp_per_capita: Number(row.gdp_per_capita),
+              total_events: Number(row.total_events),
+              total_fatalities: Number(row.total_fatalities),
+            }))
+          : [];
+
+        setHighTraffic(cleanedTraffic);
+        setHighGdpConflict(cleanedHighGdp);
+      } catch (err) {
+        console.error('Failed to fetch extra risk queries:', err);
+        setHighTraffic([]);
+        setHighGdpConflict([]);
+      } finally {
+        setLoadingExtra(false);
+      }
+    };
+
+    fetchExtraRiskQueries();
+  }, [year, country]);
 
   const top = data.slice(0, 12);
 
@@ -137,7 +209,7 @@ export default function RiskRewardPage() {
 
       <Typography sx={{ color: 'grey.400', mb: 4 }}>
         Min-max normalises GDP per capita and ACLED fatalities across all country-years, then
-        computes <code style={{ color: '#00d4aa' }}>score = norm_gdp − norm_fatalities</code>.
+        computes <code style={{ color: '#00d4aa' }}> score = norm_gdp − norm_fatalities</code>.
       </Typography>
 
       <Paper elevation={0} sx={{ p: 3, mb: 4, border: '1px solid #1e2d4a', borderRadius: 2 }}>
@@ -157,7 +229,7 @@ export default function RiskRewardPage() {
             <TextField
               fullWidth
               size="small"
-              label="Country (optional)"
+              label="Country optional"
               value={country}
               placeholder="US, USA, United States..."
               onChange={e => setCountry(e.target.value)}
@@ -180,7 +252,7 @@ export default function RiskRewardPage() {
         </Grid>
       </Paper>
 
-      {loading ? (
+      {loadingMain ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress color="primary" />
         </Box>
@@ -192,7 +264,7 @@ export default function RiskRewardPage() {
         <>
           <Paper elevation={0} sx={{ p: 3, mb: 4, border: '1px solid #1e2d4a', borderRadius: 2 }}>
             <Typography variant="caption" sx={{ color: 'grey.500', textTransform: 'uppercase', display: 'block', mb: 2 }}>
-              Risk vs. Reward Score (higher = better)
+              Risk vs. Reward Score higher = better
             </Typography>
 
             <ResponsiveContainer width="100%" height={340}>
@@ -218,7 +290,7 @@ export default function RiskRewardPage() {
 
           <Paper elevation={0} sx={{ p: 3, mb: 4, border: '1px solid #1e2d4a', borderRadius: 2 }}>
             <Typography variant="caption" sx={{ color: 'grey.500', textTransform: 'uppercase', display: 'block', mb: 2 }}>
-              GDP / Conflict Trade-off (size = fatalities)
+              GDP / Conflict Trade-off size = fatalities
             </Typography>
 
             <ResponsiveContainer width="100%" height={300}>
@@ -231,7 +303,7 @@ export default function RiskRewardPage() {
                   name="GDP per capita"
                   tick={{ fill: '#888', fontSize: 11 }}
                   unit="$"
-                  label={{ value: 'GDP per capita (USD)', fill: '#888', dy: 18, fontSize: 12 }}
+                  label={{ value: 'GDP per capita USD', fill: '#888', dy: 18, fontSize: 12 }}
                 />
 
                 <YAxis
@@ -244,10 +316,7 @@ export default function RiskRewardPage() {
 
                 <ZAxis type="number" dataKey="total_fatalities" range={[40, 300]} />
 
-                <Tooltip
-                  content={<DarkTooltip />}
-                  cursor={{ strokeDasharray: '3 3' }}
-                />
+                <Tooltip content={<DarkTooltip />} cursor={{ strokeDasharray: '3 3' }} />
 
                 <Scatter data={data}>
                   {data.map((row, i) => (
@@ -257,6 +326,134 @@ export default function RiskRewardPage() {
               </ScatterChart>
             </ResponsiveContainer>
           </Paper>
+        </>
+      )}
+
+      <Paper elevation={0} sx={{ p: 3, mb: 4, border: '1px solid #1e2d4a', borderRadius: 2 }}>
+        <Typography variant="h6" sx={{ color: 'white', mb: 1 }}>
+          🚦 High Traffic + High Conflict Countries
+        </Typography>
+
+
+        {loadingExtra ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : highTraffic.length === 0 ? (
+          <Typography sx={{ color: 'grey.500' }}>
+            No high-traffic conflict rows found.
+          </Typography>
+        ) : (
+          <Paper elevation={0} sx={{ border: '1px solid #1e2d4a', borderRadius: 2, overflow: 'hidden' }}>
+            {highTraffic.slice(0, 12).map((row, i) => (
+              <Box
+                key={`${row.country_name}-${i}`}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  px: 3,
+                  py: 1.5,
+                  borderBottom: '1px solid #1a2540',
+                  '&:last-child': { borderBottom: 'none' },
+                  '&:hover': { bgcolor: '#1a2540' },
+                }}
+              >
+                <Typography sx={{ width: 36, color: 'grey.600', fontFamily: 'monospace' }}>
+                  #{i + 1}
+                </Typography>
+
+                <Typography sx={{ flex: 1, color: 'white', fontWeight: 600 }}>
+                  {row.country_name}
+                </Typography>
+
+                <Chip label={row.iso_country} size="small" sx={{ bgcolor: '#1e2d4a', color: '#4db8ff' }} />
+
+                <Chip
+                  label={`${Number(row.total_arrivals || 0).toLocaleString()} arrivals`}
+                  size="small"
+                  sx={{ bgcolor: '#00d4aa22', color: '#00d4aa' }}
+                />
+
+                <Chip
+                  label={`${Number(row.total_fatalities || 0).toLocaleString()} fatalities`}
+                  size="small"
+                  sx={{ bgcolor: '#ff6b3522', color: '#ff6b35' }}
+                />
+
+                <Chip
+                  label={`Net: ${Number(row.net_reward_score ?? 0).toFixed(3)}`}
+                  size="small"
+                  sx={{ bgcolor: '#ffb34722', color: '#ffb347', fontFamily: 'monospace' }}
+                />
+              </Box>
+            ))}
+          </Paper>
+        )}
+      </Paper>
+
+      <Paper elevation={0} sx={{ p: 3, mb: 4, border: '1px solid #1e2d4a', borderRadius: 2 }}>
+        <Typography variant="h6" sx={{ color: 'white', mb: 1 }}>
+          💰 High GDP + High Conflict Countries
+        </Typography>
+
+
+        {loadingExtra ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : highGdpConflict.length === 0 ? (
+          <Typography sx={{ color: 'grey.500' }}>
+            No high-GDP/high-conflict rows found for this filter.
+          </Typography>
+        ) : (
+          <Paper elevation={0} sx={{ border: '1px solid #1e2d4a', borderRadius: 2, overflow: 'hidden' }}>
+            {highGdpConflict.slice(0, 12).map((row, i) => (
+              <Box
+                key={`${row.country}-${row.year}-${i}`}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  px: 3,
+                  py: 1.5,
+                  borderBottom: '1px solid #1a2540',
+                  '&:last-child': { borderBottom: 'none' },
+                  '&:hover': { bgcolor: '#1a2540' },
+                }}
+              >
+                <Typography sx={{ width: 36, color: 'grey.600', fontFamily: 'monospace' }}>
+                  #{i + 1}
+                </Typography>
+
+                <Typography sx={{ flex: 1, color: 'white', fontWeight: 600 }}>
+                  {row.country}
+                </Typography>
+
+                <Chip label={row.year} size="small" sx={{ bgcolor: '#1e2d4a', color: 'grey.300' }} />
+
+                <Chip
+                  label={`GDP/cap: $${Number(row.gdp_per_capita || 0).toLocaleString()}`}
+                  size="small"
+                  sx={{ bgcolor: '#00d4aa22', color: '#00d4aa' }}
+                />
+
+                <Chip
+                  label={`${Number(row.total_fatalities || 0).toLocaleString()} fatalities`}
+                  size="small"
+                  sx={{ bgcolor: '#ff6b3522', color: '#ff6b35' }}
+                />
+              </Box>
+            ))}
+          </Paper>
+        )}
+      </Paper>
+
+      {data.length > 0 && (
+        <>
+          <Typography variant="h6" sx={{ mb: 2, color: 'white' }}>
+            📋 Risk vs. Reward Country-Year Details
+          </Typography>
 
           <Paper elevation={0} sx={{ border: '1px solid #1e2d4a', borderRadius: 2, overflow: 'hidden' }}>
             {data.slice(0, limit).map((row, i) => (

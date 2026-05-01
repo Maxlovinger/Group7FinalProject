@@ -243,10 +243,10 @@ Fill in the table below in your final report after running each query twice
 
 | Complex query | Pre-opt | Post-opt | Optimization |
 |---|---|---|---|
-| `/risk_reward_score` | ___s | ___ms | `CROSS JOIN stats` + 60s cache |
-| `/recovery_timeline` | ___s | ___ms | indexes on `country` + 60s cache |
-| `/high_traffic_conflict` | ___s | ___ms | bridge-table joins + 60s cache |
-| `/travel_corridors` | ___s | ___ms | slim WDI view + 60s cache |
+| `/risk_reward_score` | 1486.04 ms | 0.37 ms | `CROSS JOIN stats` + 60s cache |
+| `/recovery_timeline` | 1592.82 ms | 0.18 ms | indexes on `country` + 60s cache |
+| `/high_traffic_conflict` | 5234.58 ms | 0.10 ms | bridge-table joins + 60s cache |
+| `/travel_corridors` | 1421.83 ms | 0.13 ms | slim WDI view + 60s cache |
 
 ---
 
@@ -297,7 +297,8 @@ Fill in the table below in your final report after running each query twice
 ### Risk Reward
 > The Risk vs. Reward Builder page with year=2022 — bar chart + GDP/conflict scatter visible.
 
-![Risk Reward](riskReward.png)
+![Risk Reward](riskReward1.png)
+![](riskReward2.png)
 
 ---
 

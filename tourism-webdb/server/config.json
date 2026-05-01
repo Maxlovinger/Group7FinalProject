@@ -1,9 +1,9 @@
 {
-  "host":     "localhost",
-  "user":     "postgres",
-  "password": "postgres",
-  "port":     5432,
-  "database": "postgres",
+  "host":        "your-rds-endpoint.rds.amazonaws.com",
+  "user":        "your_username",
+  "password":    "your_strong_password",
+  "port":        5432,
+  "database":    "your_database_name",
   "server_port": 8080,
   "server_host": "localhost"
 }
