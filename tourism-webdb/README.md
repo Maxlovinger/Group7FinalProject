@@ -126,6 +126,23 @@ npm start
 | GET    | `/countries`               | All countries from the countries table |
 | GET    | `/search_airports`         | Search airports by city name or country code |
 
+### 🔗 Frontend → Backend Route Mapping
+
+The table below shows exactly which frontend page triggers each backend API route.
+
+| Page | Endpoint(s) Triggered | Notes |
+|------|----------------------|------|
+| **HomePage** | `/author/name`, `/flight_stats`, `/top_airports` | Landing stats + top airports |
+| **SearchPage** | `/countries`, `/search_airports`, `/top_airports` | Dropdown + search + surprise |
+| **RankingsPage** | `/flights_by_country` | Country-level flight rankings |
+| **ConflictPage** | `/top_conflict_countries`, `/conflict_summary`, `/conflict_by_event_type` | Filters + event breakdown |
+| **FlightsPage** | `/top_airports`, `/travel_corridors`, `/busiest_airports_by_country` | Airports + corridors + hubs |
+| **RiskRewardPage** | `/risk_reward_score`, `/high_traffic_conflict`, `/high_gdp_high_conflict` | Main analytics page |
+| **GDPPage** | `/country_gdp_timeline`, `/city_gdp_context` | GDP trends + city context |
+| **RecoveryPage** | `/recovery_timeline` | Post-conflict recovery |
+| **CityExplorerPage** | `/city_profile`, `/conflict_summary` | City + country linkage |
+| **ComparePage** | `/risk_reward_score` | Used for comparison |
+
 ---
 
 ## Technologies
@@ -185,8 +202,8 @@ npm start
 | `/flights_by_country` | GET | Global Rankings page + chart | JOIN `flights` + `airports` + `countries`, GROUP BY country |
 | `/conflict_summary` | GET | Conflict page search results | JOIN `acled_weekly_events` + `acled_source_area`, dynamic WHERE, GROUP BY country/year |
 | `/top_conflict_countries` | GET | Conflict page bar chart | JOIN `acled_weekly_events` + `acled_source_area`, GROUP BY country, ORDER BY fatalities |
-| `/conflict_by_event_type` | GET | Conflict breakdown (available, not yet surfaced in UI) | JOIN + GROUP BY event_type |
-| `/countries` | GET | Country lookup (available, not yet used in UI) | Simple SELECT on `countries` |
+| `/conflict_by_event_type` | GET |  Conflict breakdown by event type (used in Conflict page) | JOIN + GROUP BY event_type |
+| `/countries` | GET | Country dropdown in Search page | Simple SELECT on `countries` |
 | `/search_airports` | GET | Search Airports page | Filtered SELECT on `airports` with ILIKE, paginated |
 |---|---|---|---|---|
 | `/risk_reward_score`| GET  | Risk vs. Reward Index Builder, Compare page | **Complex**|
@@ -210,11 +227,11 @@ npm start
 | `LazyTable.js` | ✅ | unchanged |
 | `StatCard.js` | ✅ | Reused on the City Explorer for arrivals / metro GDP / population. |
 | `HomePage.js` | ✅ | unchanged |
-| `FlightsPage.js` | ✅ | unchanged |
-| `ConflictPage.js` | ✅ | unchanged |
+| `FlightsPage.js` | ✅ | Extended — now includes travel corridors + busiest airport by country |
+| `ConflictPage.js` | ✅ | Extended — includes conflict-by-event-type breakdown |
+| `SearchPage.js` | ✅ | Extended — includes country dropdown via `/countries` |
+| `RiskRewardPage.js` | ✅ | Extended — includes high-traffic conflict + high-GDP/high-conflict tables |
 | `RankingsPage.js` | ✅ | Kept as-is (flight arrivals); the Risk vs. Reward leaderboard moved to its own page. |
-| `SearchPage.js` | ✅ | unchanged |
-| `RiskRewardPage.js` | ✅ | New — bar chart + GDP×fatalities scatter + colored breakdown rows. |
 | `CityExplorerPage.js` | ✅ | New — two-call composite (city profile + country conflict). |
 | `GDPPage.js` | ✅ | New — line chart + city share-of-GDP table. |
 | `RecoveryPage.js` | ✅ | New — horizontal bar chart of years_to_recovery. |
