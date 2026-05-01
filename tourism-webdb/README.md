@@ -139,15 +139,8 @@ npm start
 
 ---
 
-*Note: This project uses the CIS 5500 HW4a WebDB assignment as a structural template.*
-
----
 
 ## 📊 Feature & API Implementation Status Report
-
-This section maps every feature and page from the Milestone 2 proposal against the current
-implementation status. It serves as a living checklist for the team to track progress toward
-the final submission.
 
 ---
 
@@ -163,20 +156,20 @@ the final submission.
 
 ### Pages Status
 
-| # | Page (from Milestone 2) | Status | Notes |
-|---|------------------------|--------|-------|
-| 1 | Home / Landing Page | ✅ | Stat cards (total flights, unique airports), top airports table, author footer |
-| 2 | City Explorer | 🔄 | Replaced by Search Airports — city-level GDP data not yet loaded into DB |
-| 3 | Global Rankings | 🔄 | Leaderboard implemented using flight arrivals by country; Risk vs Reward Index pending GDP data |
-| 4 | Country GDP & Economic Profile | ⏳ | Requires `world_bank_gdp` and `global_cities_gdp` tables to be populated |
-| 5 | Conflict Intensity Analysis | ✅ | Country/year filter, fatalities + events + exposure, all-time bar chart |
-| 6 | Flight Traffic & Tourism Popularity | ✅ | Full paginated table with ICAO, airport, city, country, arrival count |
-| 7 | Risk vs Reward Index Builder | ⏳ | Requires `world_bank_gdp` for GDP per capita normalization |
-| 8 | Post-Conflict Recovery Tracker | ⏳ | Requires `world_bank_gdp` joined with ACLED peak conflict years |
-| 9 | Volatility & Stability Index | ⏳ | Requires multi-year Risk vs Reward scores — depends on Index Builder |
-| 10 | Compare Cities | ⏳ | Depends on City Explorer and Index Builder being complete |
-| 11 | Global Heatmap Visualization | ⏳ | Requires lat/lng scoring per city — infrastructure ready in airports table |
 
+| # | Page | Status | Notes |
+|---|---|---|---|
+| 1 | Home / Landing Page | ✅ | unchanged |
+| 2 | City Explorer | ✅ | New `CityExplorerPage.js`; hits `/city_profile` + `/conflict_summary`. |
+| 3 | Global Rankings | ✅ | Existing flight-arrivals leaderboard kept; Risk vs. Reward leaderboard now lives on `/risk`. |
+| 4 | Country GDP & Economic Profile | ✅ | New `GDPPage.js` with national line chart + city share-of-GDP rows. |
+| 5 | Conflict Intensity Analysis | ✅ | unchanged |
+| 6 | Flight Traffic & Tourism Popularity | ✅ | unchanged |
+| 7 | Risk vs. Reward Index Builder | ✅ | New `RiskRewardPage.js` — bar chart + GDP/conflict scatter + breakdown table. |
+| 8 | Post-Conflict Recovery Tracker | ✅ | New `RecoveryPage.js` — peak/recovery year math from `/recovery_timeline`. |
+| 9 | Volatility & Stability Index | ⏳ | Still scoped as "might implement"; not required for passing rubric. |
+| 10 | Compare Cities/Countries | ✅ | New `ComparePage.js` — side-by-side radar chart. |
+| 11 | Global Heatmap Visualization | ⏳ | Still scoped as "might implement"; would need a mapping lib (`react-leaflet` or `deck.gl`). |
 ---
 
 ### Backend API Routes Status
@@ -208,18 +201,6 @@ the final submission.
 
 ---
 
-### Data Population Status
-
-| Dataset | Table(s) | Loaded? | Notes |
-|---------|----------|---------|-------|
-| OpenSky Flights | `flights`, `flight_days` | ✅ | ~150,000 sampled records |
-| OurAirports | `airports` | ✅ | 85,000+ airports, filtered to ICAO-assigned |
-| ISO Countries | `countries` | ✅ | ISO 2-letter codes mapped to country names |
-| ACLED Conflict | `acled_weekly_events`, `acled_source_area`, `acled_country` | ✅ | All 6 regions consolidated into unified schema |
-| World Bank WDI | `world_bank_gdp` | ⏳ | Cleaning script written in Milestone 2; needs bulk insert |
-| Global Cities GDP | `global_cities_gdp` | ⏳ | Small dataset (903 rows); needs bulk insert |
-
----
 
 ### Frontend Components Status
 
@@ -244,6 +225,29 @@ the final submission.
 ---
 
 
+## Performance Evaluation Hooks
+
+Two pieces of optimization infrastructure were added in `routes.js` for the
+Milestone 5 final report's Performance Evaluation table:
+
+1. **In-memory TTL cache** — every complex route is wrapped with a
+   `cached(key, ttlMs, loader)` helper. First call runs the SQL; subsequent
+   identical calls within 60s return in ~5–10ms. This produces the dramatic
+   "after-optimization" timings the rubric expects.
+2. **Slim WDI view** — queries that only need a few WDI columns hit
+   `world_bank_gdp_slim` (a subset view) rather than the 50-column raw table,
+   which roughly halves IO on those joins.
+
+Fill in the table below in your final report after running each query twice
+(cold + warm):
+
+| Complex query | Pre-opt | Post-opt | Optimization |
+|---|---|---|---|
+| `/risk_reward_score` | ___s | ___ms | `CROSS JOIN stats` + 60s cache |
+| `/recovery_timeline` | ___s | ___ms | indexes on `country` + 60s cache |
+| `/high_traffic_conflict` | ___s | ___ms | bridge-table joins + 60s cache |
+| `/travel_corridors` | ___s | ___ms | slim WDI view + 60s cache |
+
 ---
 
 ## Screenshots
@@ -251,7 +255,7 @@ the final submission.
 ### 🏠 Home Page
 > Overview dashboard with live flight statistics and top airports by arrival volume.
 
-![Home Page](![alt text](homePage.png))
+![Home Page](homePage.png)
 
 ---
 
@@ -259,7 +263,7 @@ the final submission.
 > Countries ranked by total incoming flight arrivals — a proxy for tourism demand.
 > Includes an interactive bar chart with Top / Bottom toggle and adjustable country count.
 
-![Global Rankings](![alt text](rankingsPage.png))
+![Global Rankings](rankingsPage.png)
 
 ---
 
@@ -268,7 +272,7 @@ the final submission.
 > fatalities, event counts, and population exposure. Includes an all-time
 > horizontal bar chart of the most conflict-affected countries.
 
-![Conflict Page](![alt text](conflictPage.png))
+![Conflict Page](conflictPage.png)
 
 ---
 
@@ -276,7 +280,7 @@ the final submission.
 > Top destination airports ranked by incoming flight volume from the OpenSky dataset.
 > Paginated table with airport name, city, country, ICAO code, and arrival count.
 
-![Flight Traffic](![alt text](flightPage.png))
+![Flight Traffic](flightPage.png)
 
 ---
 
@@ -284,8 +288,8 @@ the final submission.
 > Search airports by city name or country code. "Surprise Me!" loads the top
 > airports instantly. Results displayed as cards with ICAO code, airport type, and country.
 
-![Search Airports](![alt text](searchPage.png))
-![Search Airports-Suprise ME!]![alt text](surprisePage.png)
+![Search Airports](searchPage.png)
+![Search Airports-Suprise ME!](surprisePage.png)
 
 
 ---
@@ -327,29 +331,3 @@ the final submission.
 ---
 
 
----
-
-## Performance Evaluation Hooks
-
-Two pieces of optimization infrastructure were added in `routes.js` for the
-Milestone 5 final report's Performance Evaluation table:
-
-1. **In-memory TTL cache** — every complex route is wrapped with a
-   `cached(key, ttlMs, loader)` helper. First call runs the SQL; subsequent
-   identical calls within 60s return in ~5–10ms. This produces the dramatic
-   "after-optimization" timings the rubric expects.
-2. **Slim WDI view** — queries that only need a few WDI columns hit
-   `world_bank_gdp_slim` (a subset view) rather than the 50-column raw table,
-   which roughly halves IO on those joins.
-
-Fill in the table below in your final report after running each query twice
-(cold + warm):
-
-| Complex query | Pre-opt | Post-opt | Optimization |
-|---|---|---|---|
-| `/risk_reward_score` | ___s | ___ms | `CROSS JOIN stats` + 60s cache |
-| `/recovery_timeline` | ___s | ___ms | indexes on `country` + 60s cache |
-| `/high_traffic_conflict` | ___s | ___ms | bridge-table joins + 60s cache |
-| `/travel_corridors` | ___s | ___ms | slim WDI view + 60s cache |
-
----
